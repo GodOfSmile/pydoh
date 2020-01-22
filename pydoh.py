@@ -8,6 +8,7 @@ import sys
 import argparse
 import socket
 import signal
+import random
 
 
 # noinspection PyShadowingBuiltins, PyUnusedLocal
@@ -41,14 +42,14 @@ def build_request(name, rr_type="A",
 
     :param bool disable_dnssec: Checking disabled. Use cd=1 to disable DNSSEC validation
 
-    :param str content_type: Default application/x-javascript for JSON. Use application/dns-message to receive a binary DNS.
+    :param str content_type: Default application/x-javascript for JSON. Use application/dns-message for binary DNS.
 
 
     :param bool include_dnssec_records: DNSSEC OK flag. If true, include RRSIG, NSEC, NSEC3 records; otherwise, omit.
 
-    :param str edns_client_subnet: If you are using DNS-over-HTTPS because of privacy concerns, and do not want any part of
-                               your IP address to be sent to authoritative name servers for geographic location
-                               accuracy, use edns_client_subnet=0.0.0.0/0
+    :param str edns_client_subnet: If you are using DNS-over-HTTPS because of privacy concerns, and do not want any part
+                                   of your IP address to be sent to authoritative name servers for geographic location
+                                   accuracy, use edns_client_subnet=0.0.0.0/0
     :param str random_padding: ignored
     :return str:
     """
@@ -115,15 +116,20 @@ def make_post(query):
     ...     ca_certs='/path/to/your/certificate_bundle')    
     """
 
-    body = b'\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x03\x77\x77\x77\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63\x6f\x6d\x00\x00\x01\x00\x01'
+    # test data
+    # body = b'\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x03\x77\x77\x77\x07\x65\x78\x61\x6d
+    # \x70\x6c\x65\x03\x63\x6f\x6d\x00\x00\x01\x00\x01'
 
     # you have to update hosts file so dns.google points to 8.8.4.4 and cloudflare-dns.com points to 104.16.249.249
-    # r = https.request("POST", "https://dns.google/dns-query", headers={"Content-Type": "application/dns-message"}, body=query)
-    r = https.request("POST", "https://cloudflare-dns.com/dns-query", headers={"Content-Type": "application/dns-message"},
+
+    urls = ["https://dns.google/dns-query", "https://cloudflare-dns.com/dns-query"]
+    r = https.request("POST", random.choice(urls), headers={"Content-Type": "application/dns-message"},
                       body=query)
-    print(r.status)
+
     if r.status == 200:
         return r.data
+    else:
+        print(r.status)
 
 
 def main():
@@ -161,19 +167,32 @@ def udp_server():
 
     :return:
     """
+
+    address = '127.0.0.1'
+    port = 53
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_address = ('127.0.0.1', 53)
+    server_address = (address, port)
     s.bind(server_address)
     s.settimeout(1)
     signal.signal(signal.SIGINT, handler)
+    print("DoH! Server")
+    print("Make sure hosts file correctly points google.dns and cloudflare-dns.com"
+          " to 8.8.4.4. and 104.16.249.249, respectively.")
+    print("Started on %s:%d..." % (address, port))
     while True:
         try:
             query, address = s.recvfrom(4096)
             if query:
                 answer = make_post(query)
-                sent = s.sendto(answer, address)
+                s.sendto(answer, address)
         except socket.timeout:
             pass
+        except WindowsError as we:
+            if we.errno == 10054:
+                # remote host closed connection.
+                pass
+            else:
+                print(we)
         except Exception as e:
             print(e)
 
@@ -181,3 +200,4 @@ def udp_server():
 if __name__ == "__main__":
     # main()
     udp_server()
+    print("Exiting....")
