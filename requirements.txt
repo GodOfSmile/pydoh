@@ -1,3 +1,7 @@
 flask
 gunicorn
 dnslib
+flask
+dnslib
+urllib3
+gunicorn
