@@ -216,6 +216,10 @@ def doh_query():
     else:
         return jsonify({"error": f"Request failed with status {r.status}"}), r.status
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "ok", "message": "DoH server is running"}), 200
+
 
 if __name__ == "__main__":
     # Для запуска UDP-сервера комментируй следующую строку и раскомментируй udp_server()
