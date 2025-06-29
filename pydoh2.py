@@ -222,9 +222,8 @@ def health_check():
 
 
 if __name__ == "__main__":
-    # Для запуска UDP-сервера комментируй следующую строку и раскомментируй udp_server()
-    # udp_server()
+    import os
 
-    # Запуск Flask-сервера
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
     print("Exiting....")
