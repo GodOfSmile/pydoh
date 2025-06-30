@@ -200,6 +200,28 @@ def udp_server():
 
 # Flask API endpoint
 @app.route("/doh", methods=["GET"])
+from flask import Response
+
+@app.route("/dns-query", methods=["GET", "POST"])
+def dns_query():
+    if request.method == "GET":
+        dns_query_data = request.args.get("dns")
+        if not dns_query_data:
+            return "Missing 'dns' parameter", 400
+        import base64
+        try:
+            decoded = base64.urlsafe_b64decode(dns_query_data + '==')
+        except Exception as e:
+            return f"Invalid base64: {e}", 400
+        response = make_post(decoded)
+        return Response(response, content_type="application/dns-message")
+
+    elif request.method == "POST":
+        if request.content_type != "application/dns-message":
+            return "Unsupported Media Type", 415
+        dns_query_data = request.get_data()
+        response = make_post(dns_query_data)
+        return Response(response, content_type="application/dns-message")
 def doh_query():
     name = request.args.get("name", "")
     rr_type = request.args.get("type", "A")
